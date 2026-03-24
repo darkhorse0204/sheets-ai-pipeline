@@ -1,5 +1,5 @@
 /**
- * AI Co-Pilot & Data Pipeline - Master Build
+ * AI Co-Pilot & Data Pipeline - By Ansh Jerath
  * Features: Generate, Debug, Explain, Fetch (API), Push (Webhook) + Memory
  */
 
@@ -17,9 +17,7 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
-// ==========================================
-// 1. GENERATOR LOGIC (WITH MEMORY)
-// ==========================================
+// 1. generator logic
 function generateFormulaGAS(prompt) {
   const cache = CacheService.getUserCache();
   const sheetContext = getSheetContext();
@@ -62,9 +60,8 @@ function generateFormulaGAS(prompt) {
   return aiResponse;
 }
 
-// ==========================================
-// 2. DEBUGGER LOGIC
-// ==========================================
+// debugger logic
+
 function debugFormulaGAS(brokenFormula) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error("API Key missing!");
@@ -84,9 +81,8 @@ function debugFormulaGAS(brokenFormula) {
   return result.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '');
 }
 
-// ==========================================
-// 3. EXPLAINER LOGIC
-// ==========================================
+//explainer logic
+
 function explainFormulaGAS(formula) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error("API Key missing!");
@@ -105,9 +101,8 @@ function explainFormulaGAS(formula) {
   return JSON.parse(response.getContentText()).candidates[0].content.parts[0].text.trim();
 }
 
-// ==========================================
-// 4. FETCH LOGIC (API CONNECTOR)
-// ==========================================
+//fetch logic
+
 function fetchDataGAS(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error("API Key missing!");
@@ -163,9 +158,8 @@ function fetchDataGAS(prompt) {
   return `✅ Data Pipeline Success!\nFetched ${finalData.length - 1} rows from:\n${apiConfig.url}`;
 }
 
-// ==========================================
-// 5. PUSH LOGIC (WEBHOOK SYNC)
-// ==========================================
+//push logic
+
 function pushDataGAS(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error("API Key missing!");
@@ -212,9 +206,8 @@ function pushDataGAS(prompt) {
   } catch (error) { throw new Error(`Failed to reach webhook: ${error.message}`); }
 }
 
-// ==========================================
-// UTILITIES
-// ==========================================
+//utilities
+
 function getSheetContext() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const activeCell = sheet.getActiveCell().getA1Notation();
