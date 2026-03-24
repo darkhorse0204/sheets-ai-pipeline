@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --accent-gen: #bb86fc;
+            --accent-debug: #cf6679;
+            --accent-explain: #03dac6;
+            --accent-fetch: #ff9800;
+            --accent-push: #ff4081;
+            --border: #333;
+            --user-msg: #2c2c2c;
+            --current-accent: #bb86fc; 
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 15px; display: flex; flex-direction: column; height: 95vh; box-sizing: border-box; }
+        
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+        h3 { margin: 0; color: var(--current-accent); font-size: 18px; transition: color 0.3s;}
+        
+        .toggle-container { display: flex; background: #2c2c2c; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 10px; flex-shrink: 0;}
+        .toggle-btn { flex: 1; padding: 6px 0; text-align: center; cursor: pointer; font-size: 11px; font-weight: bold; color: #888; transition: 0.3s; }
+        .toggle-btn.active-gen { background: var(--accent-gen); color: #000; }
+        .toggle-btn.active-bug { background: var(--accent-debug); color: #000; }
+        .toggle-btn.active-exp { background: var(--accent-explain); color: #000; }
+        .toggle-btn.active-fetch { background: var(--accent-fetch); color: #000; }
+        .toggle-btn.active-push { background: var(--accent-push); color: #fff; }
+        
+        #chatHistory { flex-grow: 1; overflow-y: auto; background: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+        
+        .msg { padding: 10px; border-radius: 8px; max-width: 85%; font-size: 13px; word-wrap: break-word; white-space: pre-wrap; }
+        .user-msg { background: var(--user-msg); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot-msg { background: #000; color: #00e676; border: 1px dashed var(--current-accent); align-self: flex-start; border-bottom-left-radius: 2px; width: 100%; box-sizing: border-box;}
+        
+        .inline-inject-btn { background: #00e676; color: #000; border: none; padding: 6px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 8px; width: 100%; display: block;}
+        .inline-inject-btn:hover { opacity: 0.9; }
+        
+        .helper-text { font-size: 11px; color: var(--current-accent); cursor: pointer; display: none; margin-bottom: 8px; text-align: right; text-decoration: underline; }
+        
+        .input-area { flex-shrink: 0; }
+        textarea { width: 100%; height: 60px; background: #2c2c2c; color: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 13px; resize: none; box-sizing: border-box; margin-bottom: 8px; }
+        textarea:focus { outline: none; border-color: var(--current-accent); }
+        
+        button.main-btn { background-color: var(--current-accent); color: #000; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .loader-text { text-align: center; font-size: 12px; color: #aaa; margin-top: 5px; display: none; }
+    </style>
+  </head>
+  <body>
+
+    <div class="header-row">
+        <h3 id="appTitle">✨ AI Co-Pilot</h3>
+        <button onclick="clearMemory()" style="border:none; padding: 4px 8px; font-size: 11px; background: #333; color: #aaa; border-radius: 4px; cursor: pointer;">Clear Chat</button>
+    </div>
+
+    <div class="toggle-container">
+        <div class="toggle-btn active-gen" id="btnGen" onclick="setMode('generate')">Gen</div>
+        <div class="toggle-btn" id="btnDebug" onclick="setMode('debug')">Fix</div>
+        <div class="toggle-btn" id="btnExplain" onclick="setMode('explain')">Explain</div>
+        <div class="toggle-btn" id="btnFetch" onclick="setMode('fetch')">Fetch</div>
+        <div class="toggle-btn" id="btnPush" onclick="setMode('push')">Push</div>
+    </div>
+    
+    <div id="fetchFormulaBtn" class="helper-text" onclick="fetchActiveFormula()">Fetch formula from active cell</div>
+    
+    <div id="chatHistory">
+        <div class="msg bot-msg" style="color: var(--text-main);">Systems online. How can I assist you with your spreadsheet today?</div>
+    </div>
+    
+    <div class="input-area">
+        <textarea id="promptInput" placeholder="Describe the formula you need..."></textarea>
+        <button id="submitBtn" class="main-btn">Generate</button>
+        <div id="loader" class="loader-text">Processing...</div>
+    </div>
+
+    <script>
+      let currentMode = 'generate';
+      const root = document.documentElement;
+
+      function setMode(mode) {
+          currentMode = mode;
+          document.getElementById('btnGen').className = 'toggle-btn';
+          document.getElementById('btnDebug').className = 'toggle-btn';
+          document.getElementById('btnExplain').className = 'toggle-btn';
+          document.getElementById('btnFetch').className = 'toggle-btn';
+          document.getElementById('btnPush').className = 'toggle-btn';
+
+          const promptInput = document.getElementById('promptInput');
+          const submitBtn = document.getElementById('submitBtn');
+          const fetchHelper = document.getElementById('fetchFormulaBtn');
+
+          if (mode === 'generate') {
+              document.getElementById('btnGen').classList.add('active-gen');
+              root.style.setProperty('--current-accent', 'var(--accent-gen)');
+              promptInput.placeholder = "Describe the formula you need...";
+              submitBtn.textContent = "Generate";
+              fetchHelper.style.display = 'none';
+          } else if (mode === 'debug') {
+              document.getElementById('btnDebug').classList.add('active-bug');
+              root.style.setProperty('--current-accent', 'var(--accent-debug)');
+              promptInput.placeholder = "Paste broken formula here...";
+              submitBtn.textContent = "Fix Formula";
+              fetchHelper.style.display = 'block';
+          } else if (mode === 'explain') {
+              document.getElementById('btnExplain').classList.add('active-exp');
+              root.style.setProperty('--current-accent', 'var(--accent-explain)');
+              promptInput.placeholder = "Paste formula to explain...";
+              submitBtn.textContent = "Explain Formula";
+              fetchHelper.style.display = 'block';
+          } else if (mode === 'fetch') {
+              document.getElementById('btnFetch').classList.add('active-fetch');
+              root.style.setProperty('--current-accent', 'var(--accent-fetch)');
+              promptInput.placeholder = "What data do you want to pull?";
+              submitBtn.textContent = "Run Pipeline";
+              fetchHelper.style.display = 'none';
+          } else if (mode === 'push') {
+              document.getElementById('btnPush').classList.add('active-push');
+              root.style.setProperty('--current-accent', 'var(--accent-push)');
+              promptInput.placeholder = "Paste the webhook URL to send this row to...";
+              submitBtn.textContent = "Push Data";
+              fetchHelper.style.display = 'none';
+          }
+      }
+
+      function fetchActiveFormula() {
+          const fetchBtn = document.getElementById('fetchFormulaBtn');
+          fetchBtn.innerText = "Fetching...";
+          google.script.run
+            .withSuccessHandler(function(formula) {
+                if(formula) document.getElementById('promptInput').value = formula;
+                else alert("No formula found in the selected cell.");
+                fetchBtn.innerText = "Fetch formula from active cell";
+            }).getActiveCellFormula();
+      }
+
+      function scrollToBottom() {
+          const chat = document.getElementById('chatHistory');
+          chat.scrollTop = chat.scrollHeight;
+      }
+
+      function appendMessage(sender, text, isError = false) {
+          const chat = document.getElementById('chatHistory');
+          const msgDiv = document.createElement('div');
+          msgDiv.classList.add('msg');
+          
+          if (sender === 'user') {
+              msgDiv.classList.add('user-msg');
+              msgDiv.innerText = text;
+          } else {
+              msgDiv.classList.add('bot-msg');
+              if (currentMode === 'explain' || currentMode === 'debug') {
+                  msgDiv.style.fontFamily = 'inherit'; 
+                  msgDiv.style.color = 'var(--text-main)';
+              } else {
+                  msgDiv.style.fontFamily = 'monospace'; 
+                  msgDiv.style.color = '#00e676';
+              }
+              
+              const textSpan = document.createElement('span');
+              textSpan.innerText = text;
+              msgDiv.appendChild(textSpan);
+              
+              // Only add Inject button for Generate and Debug modes
+              if (!isError && (currentMode === 'generate' || currentMode === 'debug')) {
+                  const injectBtn = document.createElement('button');
+                  injectBtn.classList.add('inline-inject-btn');
+                  injectBtn.innerText = currentMode === 'generate' ? "⏬ Insert into Cell" : "🛠️ Apply Fix";
+                  injectBtn.onclick = function() { injectFormula(this, text); };
+                  msgDiv.appendChild(injectBtn);
+              }
+          }
+          chat.appendChild(msgDiv);
+          scrollToBottom();
+      }
+
+      document.getElementById('submitBtn').addEventListener('click', function() {
+        const promptInput = document.getElementById('promptInput');
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+
+        const btn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+
+        appendMessage('user', prompt);
+        promptInput.value = '';
+        btn.disabled = true;
+        loader.style.display = 'block';
+
+        let serverFunction = 'generateFormulaGAS';
+        if (currentMode === 'debug') serverFunction = 'debugFormulaGAS';
+        if (currentMode === 'explain') serverFunction = 'explainFormulaGAS';
+        if (currentMode === 'fetch') serverFunction = 'fetchDataGAS';
+        if (currentMode === 'push') serverFunction = 'pushDataGAS'; 
+
+        google.script.run
+          .withSuccessHandler(function(response) {
+            appendMessage('bot', response);
+            btn.disabled = false;
+            loader.style.display = 'none';
+          })
+          .withFailureHandler(function(error) {
+            appendMessage('bot', "Error: " + error.message, true);
+            btn.disabled = false;
+            loader.style.display = 'none';
+          })[serverFunction](prompt);
+      });
+
+      function injectFormula(btnElement, rawFormula) {
+        let cleanFormula = rawFormula;
+        const lines = rawFormula.split('\n');
+        for (let i = lines.length - 1; i >= 0; i--) {
+            let cleanLine = lines[i].replace(/`/g, '').trim();
+            if (cleanLine.startsWith('=')) { cleanFormula = cleanLine; break; }
+        }
+        
+        btnElement.innerText = "Inserting...";
+        btnElement.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(function() {
+            btnElement.innerText = "✓ Inserted!";
+            setTimeout(() => { btnElement.innerText = currentMode === 'generate' ? "⏬ Insert into Cell" : "🛠️ Apply Fix"; btnElement.disabled = false; }, 2000);
+          }).insertFormulaIntoCell(cleanFormula);
+      }
+
+      function clearMemory() {
+          document.getElementById('chatHistory').innerHTML = '<div class="msg bot-msg" style="color: var(--text-main);">Memory wiped. Starting fresh!</div>';
+          google.script.run.clearChatMemory();
+      }
+    </script>
+  </body>
+</html>
